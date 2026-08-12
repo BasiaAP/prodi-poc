@@ -1,0 +1,8 @@
+# Core PoC dependency (config loading). Everything else is stdlib.
+PyYAML>=6.0
+
+# --- Optional extras (only needed for the named integration) ---
+# anthropic>=0.40      # real LLM tiers: set PRODI_LLM=anthropic + ANTHROPIC_API_KEY
+# slack_bolt>=1.18     # Slack adapter
+# botbuilder-core>=4.15 ; aiohttp   # Microsoft Teams adapter
+# requests>=2.31       # JiraStore: set JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN

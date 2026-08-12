@@ -1,0 +1,212 @@
+# =============================================================================
+# Prodi configuration — the single place other teams customise the bot.
+# A developer connecting Prodi to a new team's communicator edits THIS file
+# (must-haves, categories, owners, routing) and writes one adapter. No code
+# changes are needed to re-skin the validation engine for another team.
+# =============================================================================
+
+bot:
+  name: "Prodi"
+  intake_channel: "#req"          # where requests are raised
+  trigger_tokens: ["#req", "[preq]", "#preq"]   # message prefixes that start a flow
+  confidence_threshold: 0.6       # below this -> escalate to a named owner
+
+# -----------------------------------------------------------------------------
+# Model routing — "right engine for the job" so token cost is justified.
+# Logical tiers are mapped to concrete model ids in one place.
+# -----------------------------------------------------------------------------
+models:
+  opus:   "claude-opus-4-8"       # complex reasoning: strategy, business cases
+  sonnet: "claude-sonnet-4-5"     # standard scanning, lookup, QA, reporting
+  haiku:  "claude-haiku-4-5"      # cheap ops: routing, keyword extraction, templates
+
+# -----------------------------------------------------------------------------
+# MUST HAVES — the gate. A request is NOT processed until these are collected.
+# `field` is the machine key; `prompt` is what the bot asks the requestor.
+# `options` (optional) constrains the accepted answers.
+# -----------------------------------------------------------------------------
+must_haves:
+  product:
+    - field: title
+      prompt: "What's the title of the request?"
+    - field: summary
+      prompt: "Give a one-line summary of what you need and why."
+    - field: affected_services
+      prompt: "Which service(s) are affected?"
+      options: [Android, iOS, BE, "B2B Business Solution", CMS,
+                "Engagement / Communication", "App Translation", "HOS Translation"]
+    - field: client_type
+      prompt: "What client type is this for?"
+      options: [Whitelabel, "Corporate client", "Reseller (No WL)",
+                "Insurance (no WL)", other, "no client request"]
+    - field: client_name
+      prompt: "Which client is this for? (or 'none')"
+    - field: revenue_relevance
+      prompt: "What is the revenue relevance?"
+      options: [None, "churn risk", upsell, "new sale", "other (specify)"]
+    - field: budget_ebitda_impact
+      prompt: "What is the budget / EBITDA impact?"
+    - field: time
+      prompt: "What is the time sensitivity / desired timeframe?"
+    - field: customer_value
+      prompt: "What is the customer value? (story points / relation / rationale)"
+  # Tech must-haves are only enforced once something looks like a bug/incident.
+  tech:
+    - field: environment
+      prompt: "Which environment is affected (prod / staging / specific build)?"
+    - field: reproducible
+      prompt: "Is it reproducible, and what are the steps?"
+    - field: user_impact
+      prompt: "What's the user impact / is live service degraded?"
+
+# -----------------------------------------------------------------------------
+# Bug vs. Incident vs. Product — keywords steer the Tech/Categorization agent.
+# -----------------------------------------------------------------------------
+classification:
+  bug_keywords: [bug, broken, error, crash, "not working", exception, typo,
+                 glitch, "wrong result", regression, "500", "nullpointer",
+                 discrepancy, discrepancies, mismatch, "shows as if", "day early",
+                 "day late", "went live early", "went live late"]
+  # NOTE: deliberately excludes generic phrasing like "should be" / "supposed
+  # to" / "earlier than" / "shows up" - those appear constantly in ordinary
+  # product-request wording ("users should be able to...") and would flood
+  # the bug path with false positives. Keyword matching only catches phrasing
+  # anticipated here; see the open question on wiring a real LLM-based
+  # Tech/Categorization judgment call instead (per the PRD's agent table).
+  incident_keywords: [outage, down, "service degraded", "cannot login", "data loss",
+                      "users affected", "production down", degradation, unavailable]
+  # Everything that is neither, and has product must-haves, is a product request.
+
+# -----------------------------------------------------------------------------
+# Owner assignment — keyword -> PM. "other" leaves the owner blank (escalate).
+# squad_board is used only for the bug path (routes to that squad's backlog
+# instead of the shared incident board). Real per-squad board keys/names are
+# still unconfirmed with tech (see PRD open questions) - the real Jira squad
+# boards found (Atlas/Pathfinder/Voyager/Horizon Squad) are Polaris idea-only
+# boards, not engineering backlogs. For now every squad_board points at HUM
+# (project "HUMANOO", board 777 backlog) - a real engineering board with a
+# proper Bug issue type, provided for testing. Split back out to real
+# per-squad boards once confirmed.
+# -----------------------------------------------------------------------------
+owners:
+  - keywords: ["white label", "whitelabel", "client request", "wl"]
+    owner: "Julia"
+    area: "White Labels / client requests"
+    squad_board: "HUM"
+  - keywords: ["healthos", "health os", "hos", "web app"]
+    owner: "Rafia"
+    area: "HealthOS / web app"
+    squad_board: "HUM"
+  - keywords: ["marketplace", "cms"]
+    owner: "Berke"
+    area: "Marketplace / CMS"
+    squad_board: "HUM"
+  - keywords: ["zoya", "ai companion", "ai layer", "ai "]
+    owner: "Sofia"
+    area: "AI / Zoya"
+    squad_board: "HUM"
+  - keywords: ["core", "mobile", "android", "ios", "home screen"]
+    owner: "Basia"
+    area: "Core / mobile app"
+    squad_board: "HUM"
+  - keywords: []                  # fallback
+    owner: ""
+    area: "Unassigned"
+    squad_board: "HUM"
+
+# -----------------------------------------------------------------------------
+# Product taxonomy the Product Optimization agent recommends against.
+# -----------------------------------------------------------------------------
+categories:
+  - "General Product XP"
+  - "AI Layer"
+  - "User Health Data"
+  - "Health Content & Coaching"
+  - "Incentives & Gamification"
+  - "General App Content (Tools)"
+  - "Custom Solutions / WLs"
+  - "New Market Expansion"
+  - "Continuum"
+  - "Strategic / Process Enablement"
+  - "Platform"
+  - "User Management"
+  - "Communications / Promotions"
+  - "Reporting"
+  - "New Ideas (Uncategorized)"
+
+opportunity_areas:
+  - "Understand my health"
+  - "Build habits that stick"
+  - "Get the right support at the right moment"
+  - "Feel the product is made for me"
+  - "[Buyer] Prove the program is working"
+  - "[Buyer] Run the program without needing us"
+  - "Reach more people in more markets"
+  - "Build on a reliable foundation"
+
+buckets:
+  - "Base Package"
+  - "Paid Upsell"
+  - "Foundational Build"
+
+# -----------------------------------------------------------------------------
+# Strategy guardrails (Q3-2026 customer-model check).
+# -----------------------------------------------------------------------------
+strategy_guardrails: [Standardize, Grow, Integrate]
+
+# -----------------------------------------------------------------------------
+# Business Case publishing — matches the existing "#idea engine" Confluence
+# tool (How to: Business Case Generator, PT space): four-part overview
+# (executive one-pager / B2B2C context / sales-channel approaches / SAFe lean
+# business case), auto-numbered BC-000N, status "Draft for validation".
+# Case numbering itself is the Store's job (see Store.next_case_id /
+# ConfluenceStore.next_case_id), not a config value - the live implementation
+# queries the Product Space for the real current max so it can't collide with
+# cases created outside this process.
+# -----------------------------------------------------------------------------
+business_case:
+  space_key: "PT"
+
+# -----------------------------------------------------------------------------
+# Routing — where a categorized request lands. Per-team board names live here.
+# -----------------------------------------------------------------------------
+routing:
+  incident_board: "INCI"
+  bug_board: "INCI"
+  product_board: "PREQS"          # PoC: PREQs; switch to Product Roadmap later
+  ideas_board: "PRODUCT"          # NOT currently used by engine.validate() - real
+                                   # board split (product vs. ideas/backlog) is still
+                                   # unconfirmed, so every product request routes to
+                                   # product_board for now. Wire this back in once
+                                   # the real Jira board routing is confirmed.
+  business_case_space: "PT"       # Confluence Product Space
+
+# -----------------------------------------------------------------------------
+# Sample "shared idea board" for the PoC dedup check. In production this is a
+# live Jira query; here it seeds a deterministic, runnable demo.
+# -----------------------------------------------------------------------------
+idea_board_seed:
+  - ref: "PROD-123"
+    title: "New home screen for mobile"
+    keywords: ["home screen", "homescreen", "landing"]
+    owner: "Basia"
+    status: "in_development"       # has a date -> in development
+  - ref: "PROD-201"
+    title: "Insurer reporting dashboard"
+    keywords: ["insurer reporting", "reporting dashboard", "holistics"]
+    owner: ""
+    status: "planned"             # no date -> in planning
+
+# -----------------------------------------------------------------------------
+# Sample squad backlog for the PoC bug-dedup check (does an existing ticket
+# already cover this?). Keyed by squad_board so the check only matches within
+# the bug's own squad. In production this is a live query against that
+# squad's real backlog.
+# -----------------------------------------------------------------------------
+squad_backlog_seed:
+  - ref: "CORE-88"
+    title: "iOS login intermittently fails after app update"
+    keywords: ["login", "log in", "sign in"]
+    board: "HUM"
+    owner: "Rafia"       # deliberately != the keyword-matched owner (Basia),
+                         # to prove the real ticket's owner wins over the guess

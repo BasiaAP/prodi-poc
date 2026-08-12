@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.json.bak
+prodi_store.json
+.venv/
