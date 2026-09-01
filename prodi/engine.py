@@ -101,16 +101,34 @@ class ValidationEngine:
             return "bug"
         return "product"
 
-    # -- Owner assignment by keyword ----------------------------------------
-    def match_owner_rule(self, text: str) -> dict[str, Any]:
-        t = text.lower()
+    # -- Owner assignment -----------------------------------------------------
+    def match_owner_rule(self, state: RequestState) -> dict[str, Any]:
+        """Owner rules can match on structured fields (applications,
+        affected_services, client_name) or fall back to freeform keywords
+        against title+description - whichever the rule's `match` dict
+        specifies. A rule with no `match` at all is the catch-all fallback;
+        for bug/incident reports (which don't collect applications/
+        affected_services) only the keyword and client_name dimensions can
+        fire."""
+        text_blob = " ".join([state.fields.get("title", ""),
+                              state.fields.get("description", "")]).lower()
+        applications = state.fields.get("applications", "").lower()
+        affected = state.fields.get("affected_services", "").lower()
+        client_name = state.fields.get("client_name", "").lower()
+
         for rule in self.cfg["owners"]:
-            if rule["keywords"] and any(k in t for k in rule["keywords"]):
+            m = rule.get("match") or {}
+            if not m:
+                return rule
+            if (any(v.lower() in applications for v in m.get("applications", []))
+                    or any(v.lower() in affected for v in m.get("affected_services", []))
+                    or any(v.lower() in client_name for v in m.get("client_name_contains", []))
+                    or any(v.lower() in text_blob for v in m.get("keywords", []))):
                 return rule
         return self.cfg["owners"][-1]
 
-    def assign_owner(self, text: str) -> tuple[str, str]:
-        rule = self.match_owner_rule(text)
+    def assign_owner(self, state: RequestState) -> tuple[str, str]:
+        rule = self.match_owner_rule(state)
         return rule["owner"], rule["area"]
 
     # -- Duplicate check against the shared idea board ----------------------
@@ -188,13 +206,12 @@ class ValidationEngine:
     # -- Full validation: produce a Classification --------------------------
     def validate(self, state: RequestState) -> Classification:
         text = " ".join([state.fields.get("title", ""),
-                         state.fields.get("summary", "")]) or ""
-        kind = self._bug_or_incident(state.fields.get("summary", "")
+                         state.fields.get("description", "")]) or ""
+        kind = self._bug_or_incident(state.fields.get("description", "")
                                      + " " + state.fields.get("title", ""))
 
         if kind in ("bug", "incident"):
-            owner_text = text + " " + state.fields.get("client_name", "")
-            owner_rule = self.match_owner_rule(owner_text)
+            owner_rule = self.match_owner_rule(state)
             owner, area = owner_rule["owner"], owner_rule["area"]
 
             if kind == "incident":
@@ -234,7 +251,7 @@ class ValidationEngine:
                     + (f"; owner taken from that ticket ({dup['owner']})." if dup.get("owner") else "."))
             return cls
 
-        owner, area = self.assign_owner(text + " " + state.fields.get("client_name", ""))
+        owner, area = self.assign_owner(state)
         dup = self.duplicate_check(text)
         taxo = self.recommend_taxonomy(state)
         strategy = self.strategy_check(state)

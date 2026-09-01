@@ -51,10 +51,10 @@ class Prodi:
                 return []
             state = RequestState(session_key=key, user=msg.user,
                                  channel=msg.channel, thread_id=msg.thread_id,
-                                 platform=msg.platform)
+                                 platform=msg.platform, user_email=msg.user_email)
             state.looks_like_bug = self.engine.looks_like_bug(msg.text)
             self._sessions[key] = state
-            # Seed title/summary from the trigger line.
+            # Seed title/description from the trigger line.
             seed = msg.text
             for tok in self.cfg["bot"]["trigger_tokens"]:
                 if seed.lower().startswith(tok):
@@ -62,7 +62,7 @@ class Prodi:
                     break
             if seed:
                 state.fields["title"] = seed[:80]
-                state.fields.setdefault("summary", seed)
+                state.fields.setdefault("description", seed)
             return self._send_form_or_finish(msg, state)
 
         # A pending single-field question (the one-at-a-time fallback for
@@ -212,6 +212,7 @@ class Prodi:
     def _save_request(self, state: RequestState, cls) -> Optional[dict[str, Any]]:
         return self.store.save_request({
             "user": state.user,
+            "user_email": state.user_email,
             "platform": state.platform.value,
             "fields": {k: v for k, v in state.fields.items()
                        if not k.startswith("_")},

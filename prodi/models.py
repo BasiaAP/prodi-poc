@@ -36,6 +36,10 @@ class IncomingMessage:
     user: str                        # requestor id or handle
     text: str
     thread_id: Optional[str] = None  # groups a multi-turn intake session
+    user_email: Optional[str] = None  # requestor's email, if the adapter can
+                                      # resolve one - used to set the real
+                                      # Jira Reporter field (see JiraStore).
+                                      # None is fine; reporter is just omitted.
     raw: Any = None                  # original platform payload (optional)
 
     @property
@@ -78,6 +82,7 @@ class RequestState:
     channel: str
     thread_id: Optional[str] = None
     platform: Platform = Platform.OTHER
+    user_email: Optional[str] = None
     fields: dict[str, str] = field(default_factory=dict)
     looks_like_bug: bool = False
     stage: str = "collecting"        # collecting -> triaged -> closed

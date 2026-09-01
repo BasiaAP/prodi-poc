@@ -43,8 +43,19 @@ class SlackAdapter(PlatformAdapter):
             user=event["user"],
             text=event.get("text", ""),
             thread_id=event.get("thread_ts") or event.get("ts"),
+            user_email=self._lookup_email(event["user"]),
             raw=event,
         )
+
+    def _lookup_email(self, user_id: str) -> Any:
+        """Resolve a Slack user ID to their email, for JiraStore's Reporter
+        field. Needs the users:read.email OAuth scope; degrades to None
+        (reporter just gets omitted) if the scope's missing or the call
+        fails - never blocks the request over this."""
+        try:
+            return self._app.client.users_info(user=user_id)["user"]["profile"].get("email")
+        except Exception:
+            return None
 
     def send(self, reply: Reply) -> None:
         self._app.client.chat_postMessage(

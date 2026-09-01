@@ -30,26 +30,24 @@ def main():
     #    One trigger message, one form reply -- not one question per message.
     feed(prodi, "csm.anna", "s1", [
         "#req add an AI companion nudge for corporate onboarding",
+        "applications: HUMANOO\n"
         "affected_services: iOS\n"
-        "client_type: Corporate client\n"
+        "client_type: Corporate Client\n"
         "client_name: Acme Corp\n"
-        "revenue_relevance: upsell\n"
-        "budget_ebitda_impact: 150k EBITDA\n"
-        "time: Q4 2026\n"
-        "customer_value: 8 pts, boosts activation",
+        "revenue_relevance: Upsell\n"
+        "revenue_impact: 150k EBITDA",
     ])
 
     # 2) Something that's really a bug -> incident board, short-circuits gate.
     #    (bug detected at intake, so the single form includes tech fields too.)
     feed(prodi, "dev.max", "s2", [
         "#req the app crashes on login after the last release",
+        "applications: HUMANOO\n"
         "affected_services: iOS\n"
         "client_type: Whitelabel\n"
         "client_name: Helsana\n"
-        "revenue_relevance: churn risk\n"
-        "budget_ebitda_impact: n/a\n"
-        "time: urgent\n"
-        "customer_value: critical for retention\n"
+        "revenue_relevance: Churn Risk\n"
+        "revenue_impact: n/a\n"
         "environment: production\n"
         "reproducible: yes, every login attempt\n"
         "user_impact: all iOS users blocked",
@@ -58,13 +56,12 @@ def main():
     # 3) A request that duplicates a planned item -> dedup response.
     feed(prodi, "pm.lea", "s3", [
         "#req new home screen for the mobile app",
+        "applications: HUMANOO\n"
         "affected_services: Android\n"
-        "client_type: Corporate client\n"
+        "client_type: Corporate Client\n"
         "client_name: Acme Corp\n"
-        "revenue_relevance: new sale\n"
-        "budget_ebitda_impact: 80k EBITDA uplift\n"
-        "time: Q3 2026\n"
-        "customer_value: 5 pts, higher engagement",
+        "revenue_relevance: New Sale\n"
+        "revenue_impact: 80k EBITDA uplift",
     ])
 
     # 4) Weekly report across everything stored.

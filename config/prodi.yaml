@@ -26,30 +26,37 @@ models:
 # `options` (optional) constrains the accepted answers.
 # -----------------------------------------------------------------------------
 must_haves:
+  # Field keys/options here match the REAL PREQS/PREQ Jira create-screen
+  # schema exactly (fetched live via getJiraIssueTypeMetaWithFields) - option
+  # casing matters, Jira's API rejects values that don't exactly match
+  # allowedValues. "reporter" is deliberately NOT here: it's never asked, it's
+  # resolved from the requestor's Slack identity (see JiraStore._resolve_reporter).
   product:
     - field: title
       prompt: "What's the title of the request?"
-    - field: summary
-      prompt: "Give a one-line summary of what you need and why."
+    - field: description
+      prompt: "Give a one-line description of what you need and why."
+    - field: applications
+      prompt: "Which application(s) does this affect?"
+      options: [active365, "Coach:N", FAIRCLUB, "Helsana Coach", HUMANOO, WLP,
+                "Médis Active", "Mon Coach Santé Angel", Vity, "ÖKK Simpla",
+                "TELUS Health Engage", Health4Business, ALL]
     - field: affected_services
       prompt: "Which service(s) are affected?"
       options: [Android, iOS, BE, "B2B Business Solution", CMS,
                 "Engagement / Communication", "App Translation", "HOS Translation"]
     - field: client_type
       prompt: "What client type is this for?"
-      options: [Whitelabel, "Corporate client", "Reseller (No WL)",
-                "Insurance (no WL)", other, "no client request"]
+      options: ["Corporate Client", Whitelabel, "Reseller (no WL)",
+                "Insurance (no WL)", Other, "No Client Request"]
     - field: client_name
       prompt: "Which client is this for? (or 'none')"
     - field: revenue_relevance
       prompt: "What is the revenue relevance?"
-      options: [None, "churn risk", upsell, "new sale", "other (specify)"]
-    - field: budget_ebitda_impact
-      prompt: "What is the budget / EBITDA impact?"
-    - field: time
-      prompt: "What is the time sensitivity / desired timeframe?"
-    - field: customer_value
-      prompt: "What is the customer value? (story points / relation / rationale)"
+      options: [None, "Churn Risk", Upsell, "New Sale",
+                "Other (please specify in description)"]
+    - field: revenue_impact
+      prompt: "What is the revenue impact?"
   # Tech must-haves are only enforced once something looks like a bug/incident.
   tech:
     - field: environment
@@ -78,7 +85,16 @@ classification:
   # Everything that is neither, and has product must-haves, is a product request.
 
 # -----------------------------------------------------------------------------
-# Owner assignment — keyword -> PM. "other" leaves the owner blank (escalate).
+# Owner assignment — first matching rule wins. Each rule's `match` checks
+# structured fields when the real PREQ schema has one (applications,
+# affected_services, client_name-contains); "keywords" is the freeform
+# fallback against title+description for concepts that aren't a real field
+# value (e.g. "Marketplace" isn't an Application(s) or Affected services
+# option). A rule with no `match` at all is the catch-all fallback - matches
+# unconditionally, so it must be last. Bug/incident reports don't collect
+# applications/affected_services (not tech must-haves), so only the keywords
+# and client_name_contains dimensions can fire for those.
+#
 # squad_board is used only for the bug path (routes to that squad's backlog
 # instead of the shared incident board). Real per-squad board keys/names are
 # still unconfirmed with tech (see PRD open questions) - the real Jira squad
@@ -89,30 +105,32 @@ classification:
 # per-squad boards once confirmed.
 # -----------------------------------------------------------------------------
 owners:
-  - keywords: ["white label", "whitelabel", "client request", "wl"]
-    owner: "Julia"
-    area: "White Labels / client requests"
+  - owner: "Basia"
+    area: "Humanoo / Telus"
     squad_board: "HUM"
-  - keywords: ["healthos", "health os", "hos", "web app"]
-    owner: "Rafia"
-    area: "HealthOS / web app"
+    match:
+      applications: ["HUMANOO", "TELUS Health Engage"]
+  - owner: "Berke"
+    area: "CMS / Marketplace"
     squad_board: "HUM"
-  - keywords: ["marketplace", "cms"]
-    owner: "Berke"
-    area: "Marketplace / CMS"
+    match:
+      affected_services: ["CMS"]
+      keywords: ["marketplace"]
+  - owner: "Sofia"
+    area: "CSS / AI companion"
     squad_board: "HUM"
-  - keywords: ["zoya", "ai companion", "ai layer", "ai "]
-    owner: "Sofia"
-    area: "AI / Zoya"
+    match:
+      client_name_contains: ["css"]
+      keywords: ["ai companion", "zoya", "ai layer"]
+  - owner: "Rafia"
+    area: "Web app / HealthOS"
     squad_board: "HUM"
-  - keywords: ["core", "mobile", "android", "ios", "home screen"]
-    owner: "Basia"
-    area: "Core / mobile app"
+    match:
+      keywords: ["web app", "healthos", "health os", "hos"]
+  - owner: "Julia"             # catch-all: any other app or client than CSS
+    area: "Other apps / clients"
     squad_board: "HUM"
-  - keywords: []                  # fallback
-    owner: ""
-    area: "Unassigned"
-    squad_board: "HUM"
+    match: {}
 
 # -----------------------------------------------------------------------------
 # Product taxonomy the Product Optimization agent recommends against.

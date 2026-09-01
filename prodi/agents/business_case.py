@@ -21,8 +21,8 @@ from .base import REGISTRY
 CHANNELS = {
     "Whitelabel": "Insurer / White-Label — monetize at the insurer buyer tier",
     "Insurance (no WL)": "Insurer — monetize at the insurer buyer tier",
-    "Corporate client": "Corporate / Core — monetize at the corporate buyer tier",
-    "Reseller (No WL)": "Reseller / SMB — monetize at the reseller tier",
+    "Corporate Client": "Corporate / Core — monetize at the corporate buyer tier",
+    "Reseller (no WL)": "Reseller / SMB — monetize at the reseller tier",
 }
 
 
@@ -49,14 +49,13 @@ def generate(llm: LLMClient, cfg: dict[str, Any], store: Store,
 **Status:** DRAFT FOR VALIDATION
 **Submitted by:** {state.user}
 **Client:** {state.fields.get('client_name', 'n/a')} ({state.fields.get('client_type', 'n/a')})
-**Summary:** {state.fields.get('summary', '')}
+**Description:** {state.fields.get('description', '')}
 """
     facts = (
         f"Sales channel: {channel}\n"
         f"Bucket: {bucket}\n"
         f"Revenue relevance: {state.fields.get('revenue_relevance', 'n/a')}\n"
-        f"Budget / EBITDA impact: {state.fields.get('budget_ebitda_impact', 'n/a')}\n"
-        f"Customer value: {state.fields.get('customer_value', 'n/a')}\n"
+        f"Revenue impact: {state.fields.get('revenue_impact', 'n/a')}\n"
         f"Strategy fit (Q3-2026 guardrails): "
         f"{state.classification.strategy if state.classification else 'TBD'}\n"
     )

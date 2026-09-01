@@ -38,21 +38,35 @@ def test_bug_detection_catches_natural_phrasing_without_false_positives():
 
 
 def test_bug_routes_to_incident_board():
-    s = _state(title="login broken", summary="users cannot login, service degraded")
+    s = _state(title="login broken", description="users cannot login, service degraded")
     cls = ENGINE.validate(s)
     assert cls.kind == "incident"
     assert cls.target_board == CFG["routing"]["incident_board"]
 
 
-def test_owner_by_keyword():
-    owner, area = ENGINE.assign_owner("new home screen for core mobile")
+def test_owner_assignment_by_structured_field():
+    # Application(s) = HUMANOO -> Basia (first rule, structured field match).
+    s = _state(title="new home screen", description="for core mobile",
+               applications="HUMANOO")
+    owner, _ = ENGINE.assign_owner(s)
     assert owner == "Basia"
-    owner2, _ = ENGINE.assign_owner("white label client request from Helsana")
+
+    # Nothing matches any rule's dimensions -> falls to Julia, the catch-all.
+    s2 = _state(title="a generic request", description="no signals here",
+                applications="WLP")
+    owner2, area2 = ENGINE.assign_owner(s2)
     assert owner2 == "Julia"
+    assert area2 == "Other apps / clients"
+
+    # client_name "CSS" -> Sofia, even with no keyword match in the text.
+    s3 = _state(title="loyalty widget", description="for the app",
+               client_name="CSS")
+    owner3, _ = ENGINE.assign_owner(s3)
+    assert owner3 == "Sofia"
 
 
 def test_duplicate_detection():
-    s = _state(title="Home screen refresh", summary="new home screen layout")
+    s = _state(title="Home screen refresh", description="new home screen layout")
     cls = ENGINE.validate(s)
     assert cls.duplicate_ref == "PROD-123"
     assert cls.duplicate_status == "in_development"
@@ -61,11 +75,11 @@ def test_duplicate_detection():
 def test_gating_missing_fields():
     s = _state(title="x")
     missing = s.missing(ENGINE.required_fields(s))
-    assert "summary" in missing and "customer_value" in missing
+    assert "description" in missing and "applications" in missing
 
 
 def test_taxonomy_recommendation():
-    s = _state(title="AI companion improvement", summary="upsell premium ai coaching")
+    s = _state(title="AI companion improvement", description="upsell premium ai coaching")
     taxo = ENGINE.recommend_taxonomy(s)
     assert taxo["category"] == "AI Layer"
     assert taxo["bucket"] == "Paid Upsell"
@@ -87,7 +101,7 @@ def test_duplicate_check_delegates_to_injected_idea_board():
     stub = _StubIdeaBoard({"ref": "PRODUCT-999", "title": "Something",
                            "status": "planned", "owner": "Rafia"})
     engine = ValidationEngine(CFG, idea_board=stub)
-    s = _state(title="anything at all", summary="doesn't matter for this test")
+    s = _state(title="anything at all", description="doesn't matter for this test")
     cls = engine.validate(s)
     assert cls.duplicate_ref == "PRODUCT-999"
     assert cls.duplicate_status == "planned"
@@ -111,7 +125,7 @@ def test_squad_duplicate_check_delegates_to_injected_backlog():
     stub = _StubSquadBacklog({"ref": "HUM-26863", "title": "Something",
                               "board": "HUM", "owner": "bulat.islamov"})
     engine = ValidationEngine(CFG, squad_backlog=stub)
-    s = _state(title="the app crashes", summary="on every launch")
+    s = _state(title="the app crashes", description="on every launch")
     cls = engine.validate(s)
     assert cls.kind == "bug"
     assert cls.duplicate_ref == "HUM-26863"

@@ -50,16 +50,28 @@ python -m prodi.adapters.cli       # interactive: type '#req <your request>'
 
 ## What the engine enforces (per the PoC)
 
-* **MUST HAVES gating** — product must-haves always; tech must-haves added when
+* **MUST HAVES gating** — title, description, applications, affected
+  services, client type, client name, revenue relevance, revenue impact
+  (matches the real PREQS/PREQ Jira create-screen schema exactly, including
+  option casing - fetched live via `getJiraIssueTypeMetaWithFields`). Tech
+  must-haves (environment, reproducible, user impact) are added on top when
   the request looks like a bug/incident. Collected as a **single form**, not
   one question per message (a native Slack modal when live; a one-message
   fill-in-the-blank reply otherwise) - any field the form reply misses falls
   back to asking just that field. Nothing is processed until the gate is
-  satisfied.
-* **Bug/incident vs product** classification → incident/bug board.
+  satisfied. Reporter is never asked - it's resolved from the requestor's
+  Slack identity into a real Jira account (see `JiraStore`).
+* **Bug/incident vs product** classification. Incidents go straight to the
+  incident board, PM tagged, no dedup. Bugs are checked against the owner's
+  squad backlog first - reference the existing ticket (owner taken from it,
+  not guessed) instead of opening a duplicate.
 * **Duplicate check** against the shared idea board (in dev vs planned vs new).
-* **Owner assignment by keyword** (White Label→Julia, HealthOS→Rafia,
-  CMS→Berke, AI/Zoya→Sofia, Core/mobile→Basia, else blank→escalate).
+* **Owner assignment**, first matching rule wins - checks structured fields
+  (`applications`, `affected_services`, `client_name`) when the real schema
+  has one, falls back to freeform keywords otherwise: Humanoo/Telus→Basia,
+  CMS/Marketplace→Berke, CSS/AI companion→Sofia, Web app/HealthOS→Rafia,
+  else→Julia (catch-all, always matches - see `config/prodi.yaml`'s `owners`
+  section for exact match dimensions per rule).
 * **Category / bucket / opportunity-area** recommendation for the PM.
 * **Strategy check** (Standardize / Grow / Integrate) and a **confidence
   threshold** that escalates to a named owner when low.
@@ -107,7 +119,7 @@ tests/                     # engine + orchestrator tests
 
 `bot` (trigger tokens, confidence threshold) · `models` (tier→model id) ·
 `must_haves` (product/tech) · `classification` (bug/incident keywords) ·
-`owners` (keyword→PM) · `categories` / `opportunity_areas` / `buckets` ·
+`owners` (structured-field or keyword match → PM) · `categories` / `opportunity_areas` / `buckets` ·
 `routing` (board names) · `idea_board_seed` (offline dedup source; swap for
 `jira_idea_board.JiraIdeaBoardChecker` to validate against the real shared
 idea board instead — same keyword-overlap matching, injected via
